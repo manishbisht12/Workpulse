@@ -76,7 +76,7 @@ export default function Sidebar() {
             <ChevronLeft size={18} />
           </button>
         </div>
-
+        
         {/* Navigation Groups */}
         <div className="px-4 py-6 space-y-6">
           {menuGroups.map((group, groupIdx) => (
