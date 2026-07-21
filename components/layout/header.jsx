@@ -1,15 +1,34 @@
 "use client";
 
 import { Bell, ChevronDown } from "lucide-react";
+import { usePathname } from "next/navigation";
+
+// Map routes → { group, label }
+const BREADCRUMB_MAP = {
+  "/dashboard":    { group: "Workspace",   label: "Dashboard" },
+  "/tasks":        { group: "Productivity", label: "Tasks" },
+  "/habits":       { group: "Productivity", label: "Habits" },
+  "/goals":        { group: "Productivity", label: "Goals" },
+  "/time-tracking":{ group: "Productivity", label: "Time Tracking" },
+  "/analytics":    { group: "Insights",    label: "Analytics" },
+  "/calendar":     { group: "Insights",    label: "Calendar" },
+  "/timeline":     { group: "Insights",    label: "Timeline" },
+  "/photos":       { group: "Personal",    label: "Photos" },
+  "/profile":      { group: "Personal",    label: "Profile" },
+  "/settings":     { group: "Personal",    label: "Settings" },
+};
 
 export default function Header() {
+  const pathname = usePathname();
+  const crumb = BREADCRUMB_MAP[pathname] ?? { group: "Workspace", label: "Dashboard" };
+
   return (
     <header className="h-16 border-b border-cyan-900/20 px-4 sm:px-6 md:px-8 flex items-center justify-between bg-[#0d131a]/80 backdrop-blur-md w-full sticky top-0 z-30">
       {/* Breadcrumbs */}
       <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-semibold tracking-wider text-slate-500 uppercase min-w-0">
-        <span className="hidden sm:inline hover:text-slate-300 transition-colors cursor-pointer">Workspace</span>
+        <span className="hidden sm:inline hover:text-slate-300 transition-colors cursor-pointer">{crumb.group}</span>
         <span className="text-slate-700 hidden sm:inline">/</span>
-        <span className="text-cyan-400 truncate">Dashboard</span>
+        <span className="text-cyan-400 truncate">{crumb.label}</span>
       </div>
 
       {/* Right Actions */}
