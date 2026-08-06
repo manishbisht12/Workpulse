@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import TaskHeader from "@/components/tasks/TaskHeader";
 import TaskFilterBar from "@/components/tasks/TaskFilterBar";
 import TaskCard from "@/components/tasks/TaskCard";
+import AddTaskModal from "@/components/tasks/AddTaskModal";
 
 const INITIAL_TASKS = [
   { id: "1", title: "Redesign marketing landing page", category: "Design", dueDate: "2026-06-17", priority: "High", status: "In Progress" },
@@ -19,6 +20,7 @@ export default function TasksPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("All");
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const stats = useMemo(() => {
     const done = tasks.filter((t) => t.status === "Completed").length;
@@ -34,6 +36,14 @@ export default function TasksPage() {
       return matchesSearch && matchesStatus && matchesPriority;
     });
   }, [tasks, searchQuery, statusFilter, priorityFilter]);
+
+  const handleAddTask = (newTask) => {
+    const taskToAdd = {
+      id: Date.now().toString(),
+      ...newTask,
+    };
+    setTasks((prev) => [taskToAdd, ...prev]);
+  };
 
   const toggleTaskStatus = (id) => {
     setTasks((prev) =>
@@ -54,7 +64,7 @@ export default function TasksPage() {
 
   return (
     <div className="text-slate-200 space-y-8">
-      <TaskHeader stats={stats} onNewTask={() => {}} />
+      <TaskHeader stats={stats} onNewTask={() => setIsModalOpen(true)} />
 
       <TaskFilterBar
         searchQuery={searchQuery}
@@ -81,6 +91,12 @@ export default function TasksPage() {
           </div>
         )}
       </div>
+
+      <AddTaskModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onAddTask={handleAddTask}
+      />
     </div>
   );
 }
