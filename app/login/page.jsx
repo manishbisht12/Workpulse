@@ -12,7 +12,7 @@ export default function LoginPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log("Login submitted:", formData);
-    router.push("/tasks");
+    router.push("/dashboard");
   };
 
   const handleGoogleSignIn = () => {

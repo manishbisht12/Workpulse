@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import HabitHeader from "@/components/habits/HabitHeader";
 import ProgressBar from "@/components/habits/ProgressBar";
 import HabitCard from "@/components/habits/HabitCard";
+import AddHabitModal from "@/components/habits/AddHabitModal";
 
 const INITIAL_HABITS = [
   {
@@ -76,6 +77,7 @@ const INITIAL_HABITS = [
 
 export default function HabitsPage() {
   const [habits, setHabits] = useState(INITIAL_HABITS);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const completedCount = useMemo(
     () => habits.filter((h) => h.completedToday).length,
@@ -107,12 +109,16 @@ export default function HabitsPage() {
     setHabits((prev) => prev.filter((h) => h.id !== id));
   };
 
+  const addHabit = (newHabit) => {
+    setHabits((prev) => [newHabit, ...prev]);
+  };
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6">
       <HabitHeader
         completedCount={completedCount}
         totalCount={habits.length}
-        onNewHabit={() => {}}
+        onNewHabit={() => setIsModalOpen(true)}
       />
 
       <ProgressBar progressPercentage={progressPercentage} />
@@ -127,6 +133,12 @@ export default function HabitsPage() {
           />
         ))}
       </div>
+
+      <AddHabitModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onAddHabit={addHabit}
+      />
     </div>
   );
 }
