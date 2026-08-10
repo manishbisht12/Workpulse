@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import GoalHeader from "@/components/goals/GoalHeader";
 import GoalCard from "@/components/goals/GoalCard";
+import GoalModal from "@/components/goals/GoalModal";
 
 const INITIAL_GOALS = [
   {
@@ -66,6 +67,11 @@ const INITIAL_GOALS = [
 
 export default function GoalsPage() {
   const [goals, setGoals] = useState(INITIAL_GOALS);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleAddGoal = (newGoal) => {
+    setGoals((prev) => [newGoal, ...prev]);
+  };
 
   const deleteGoal = (id) => {
     setGoals((prev) => prev.filter((g) => g.id !== id));
@@ -73,13 +79,22 @@ export default function GoalsPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <GoalHeader activeCount={goals.length} onNewGoal={() => {}} />
+      <GoalHeader
+        activeCount={goals.length}
+        onNewGoal={() => setIsModalOpen(true)}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {goals.map((goal) => (
           <GoalCard key={goal.id} goal={goal} onDelete={deleteGoal} />
         ))}
       </div>
+
+      <GoalModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleAddGoal}
+      />
     </div>
   );
 }
