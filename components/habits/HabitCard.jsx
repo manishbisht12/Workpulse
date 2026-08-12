@@ -5,9 +5,12 @@ import { Flame, Check, Trash2 } from "lucide-react";
 
 export default function HabitCard({ habit, onToggleComplete, onDelete }) {
   const isCompleted = habit.completedToday;
+  const habitId = habit._id || habit.id;
 
-  // Rate Circle Color based on percentage/theme
-  const ringColorClass = habit.colorClass || "stroke-violet-500";
+  const ringColorClass = habit.colorClass || "stroke-cyan-400";
+  const completionRate = habit.rate ?? 0;
+  const currentStreak = habit.streak ?? 0;
+  const maxStreak = habit.bestStreak || Math.max(currentStreak, 1);
 
   return (
     <div className="bg-[#0f1520] border border-slate-800/80 hover:border-violet-500/30 rounded-2xl p-5 flex flex-col justify-between space-y-5 transition-all">
@@ -15,16 +18,16 @@ export default function HabitCard({ habit, onToggleComplete, onDelete }) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700/50 flex items-center justify-center text-xl">
-            {habit.emoji}
+            {habit.emoji || "⚡"}
           </div>
           <div>
             <h3 className="font-bold text-sm text-slate-100">{habit.title}</h3>
-            <p className="text-xs text-slate-500 mt-0.5">{habit.category}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{habit.category || "General"}</p>
           </div>
         </div>
 
         <button
-          onClick={() => onDelete(habit.id)}
+          onClick={() => onDelete(habitId)}
           className="text-slate-600 hover:text-rose-400 transition-colors p-1"
         >
           <Trash2 size={16} />
@@ -52,13 +55,13 @@ export default function HabitCard({ habit, onToggleComplete, onDelete }) {
               strokeWidth="4"
               fill="transparent"
               strokeDasharray={138}
-              strokeDashoffset={138 - (138 * habit.rate) / 100}
+              strokeDashoffset={138 - (138 * completionRate) / 100}
               strokeLinecap="round"
             />
           </svg>
           <div className="absolute text-center">
             <span className="text-[11px] font-bold text-slate-100 block leading-none">
-              {habit.rate}%
+              {completionRate}%
             </span>
             <span className="text-[8px] text-slate-500 uppercase tracking-tighter">rate</span>
           </div>
@@ -68,16 +71,15 @@ export default function HabitCard({ habit, onToggleComplete, onDelete }) {
         <div className="flex-1 space-y-1.5">
           <div className="flex items-center gap-1.5 text-xs text-slate-300">
             <Flame size={14} className="text-violet-400" fill="currentColor" />
-            <span className="font-bold">{habit.streak}</span>
+            <span className="font-bold">{currentStreak}</span>
             <span className="text-slate-500">day streak</span>
           </div>
-          <p className="text-[10px] text-slate-500">Best: {habit.bestStreak}d</p>
+          <p className="text-[10px] text-slate-500">Best: {maxStreak}d</p>
 
-          {/* Mini Progress Indicator */}
           <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
             <div
               className="bg-violet-500 h-full rounded-full"
-              style={{ width: `${Math.min((habit.streak / habit.bestStreak) * 100, 100)}%` }}
+              style={{ width: `${Math.min((currentStreak / maxStreak) * 100, 100)}%` }}
             />
           </div>
         </div>
@@ -85,7 +87,7 @@ export default function HabitCard({ habit, onToggleComplete, onDelete }) {
 
       {/* Complete Button */}
       <button
-        onClick={() => onToggleComplete(habit.id)}
+        onClick={() => onToggleComplete(habitId)}
         className={`w-full py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 ${
           isCompleted
             ? "bg-emerald-950/40 text-emerald-400 border border-emerald-800/40 hover:bg-emerald-900/40"

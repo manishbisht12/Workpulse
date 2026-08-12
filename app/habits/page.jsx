@@ -1,83 +1,53 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import toast from "react-hot-toast";
 import HabitHeader from "@/components/habits/HabitHeader";
 import ProgressBar from "@/components/habits/ProgressBar";
 import HabitCard from "@/components/habits/HabitCard";
 import AddHabitModal from "@/components/habits/AddHabitModal";
 
-const INITIAL_HABITS = [
-  {
-    id: "1",
-    title: "Morning Meditation",
-    category: "Wellness",
-    emoji: "🧘",
-    rate: 87,
-    streak: 14,
-    bestStreak: 21,
-    completedToday: true,
-    colorClass: "stroke-violet-500",
-  },
-  {
-    id: "2",
-    title: "Read 30 minutes",
-    category: "Learning",
-    emoji: "📚",
-    rate: 72,
-    streak: 7,
-    bestStreak: 30,
-    completedToday: false,
-    colorClass: "stroke-purple-500",
-  },
-  {
-    id: "3",
-    title: "Exercise 45 min",
-    category: "Fitness",
-    emoji: "🏃",
-    rate: 68,
-    streak: 5,
-    bestStreak: 45,
-    completedToday: true,
-    colorClass: "stroke-emerald-400",
-  },
-  {
-    id: "4",
-    title: "Drink 8 glasses water",
-    category: "Health",
-    emoji: "💧",
-    rate: 94,
-    streak: 21,
-    bestStreak: 21,
-    completedToday: true,
-    colorClass: "stroke-cyan-400",
-  },
-  {
-    id: "5",
-    title: "Evening journal",
-    category: "Mindfulness",
-    emoji: "✍️",
-    rate: 58,
-    streak: 3,
-    bestStreak: 15,
-    completedToday: false,
-    colorClass: "stroke-amber-400",
-  },
-  {
-    id: "6",
-    title: "No screens before 9am",
-    category: "Digital Wellness",
-    emoji: "🌅",
-    rate: 79,
-    streak: 9,
-    bestStreak: 12,
-    completedToday: true,
-    colorClass: "stroke-rose-400",
-  },
-];
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
 
 export default function HabitsPage() {
-  const [habits, setHabits] = useState(INITIAL_HABITS);
+  const [habits, setHabits] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Helper to get Auth Token if using JWT
+  const getAuthHeaders = () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    return {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    };
+  };
+
+  // Fetch Habits from API
+  const fetchHabits = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${BASE_URL}/api/habits`, {
+        headers: getAuthHeaders(),
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to fetch habits");
+
+      // Handle both array response or { data: [...] } structure
+      const habitList = Array.isArray(data) ? data : data.habits || data.data || [];
+      setHabits(habitList);
+    } catch (err) {
+      console.error("Error fetching habits:", err);
+      toast.error(err.message || "Could not load habits");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHabits();
+  }, []);
 
   const completedCount = useMemo(
     () => habits.filter((h) => h.completedToday).length,
@@ -85,31 +55,75 @@ export default function HabitsPage() {
   );
 
   const progressPercentage = useMemo(
-    () => Math.round((completedCount / (habits.length || 1)) * 100),
+    () => (habits.length > 0 ? Math.round((completedCount / habits.length) * 100) : 0),
     [completedCount, habits.length]
   );
 
-  const toggleComplete = (id) => {
+  // Toggle Habit Completion (API Call)
+  const toggleComplete = async (id) => {
+    // Optimistic UI update
     setHabits((prev) =>
-      prev.map((habit) => {
-        if (habit.id === id) {
-          const nextState = !habit.completedToday;
+      prev.map((h) => {
+        const habitId = h._id || h.id;
+        if (habitId === id) {
+          const nextState = !h.completedToday;
+          const newStreak = nextState ? (h.streak || 0) + 1 : Math.max(0, (h.streak || 0) - 1);
+   
+          const newBest = Math.max(h.bestStreak || 0, newStreak);
+       
+          const newRate = newBest > 0 ? Math.round((newStreak / newBest) * 100) : 0;
+
           return {
-            ...habit,
+            ...h,
             completedToday: nextState,
-            streak: nextState ? habit.streak + 1 : Math.max(0, habit.streak - 1),
+            streak: newStreak,
+            bestStreak: newBest,
+            rate: newRate, 
           };
         }
-        return habit;
+        return h;
       })
     );
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/habits/${id}/toggle`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Failed to update habit status");
+      toast.success("Habit status updated!");
+    } catch (err) {
+      console.error("Error toggling habit:", err);
+      toast.error(err.message || "Failed to update");
+      // Rollback on error
+      fetchHabits();
+    }
   };
 
-  const deleteHabit = (id) => {
-    setHabits((prev) => prev.filter((h) => h.id !== id));
+  // Delete Habit (API Call)
+  const deleteHabit = async (id) => {
+    const loadingToast = toast.loading("Deleting habit...");
+    try {
+      const res = await fetch(`${BASE_URL}/api/habits/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Failed to delete habit");
+
+      setHabits((prev) => prev.filter((h) => (h._id || h.id) !== id));
+      toast.success("Habit deleted", { id: loadingToast });
+    } catch (err) {
+      console.error("Error deleting habit:", err);
+      toast.error(err.message || "Failed to delete", { id: loadingToast });
+    }
   };
 
-  const addHabit = (newHabit) => {
+  // Add Habit (Called from Modal after successful API call)
+  const handleHabitAdded = (newHabit) => {
     setHabits((prev) => [newHabit, ...prev]);
   };
 
@@ -123,21 +137,31 @@ export default function HabitsPage() {
 
       <ProgressBar progressPercentage={progressPercentage} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {habits.map((habit) => (
-          <HabitCard
-            key={habit.id}
-            habit={habit}
-            onToggleComplete={toggleComplete}
-            onDelete={deleteHabit}
-          />
-        ))}
-      </div>
+      {loading ? (
+        <div className="text-center py-12 text-cyan-400 font-semibold">
+          Loading your habits...
+        </div>
+      ) : habits.length === 0 ? (
+        <div className="text-center py-12 bg-[#0b0f17] border border-[#1e293b]/70 rounded-2xl text-slate-400">
+          No habits found. Click <strong>"New Habit"</strong> to create one!
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {habits.map((habit) => (
+            <HabitCard
+              key={habit._id || habit.id}
+              habit={habit}
+              onToggleComplete={toggleComplete}
+              onDelete={deleteHabit}
+            />
+          ))}
+        </div>
+      )}
 
       <AddHabitModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onAddHabit={addHabit}
+        onHabitAdded={handleHabitAdded}
       />
     </div>
   );
