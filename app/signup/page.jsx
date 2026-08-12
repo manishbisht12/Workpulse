@@ -3,21 +3,49 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import { UserPlus, User, Mail, Lock, Zap } from "lucide-react";
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
 
 export default function SignupPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Signup submitted:", formData);
-    router.push("/tasks");
+
+    const loadingToast = toast.loading("Creating account...");
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${BASE_URL}/api/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Signup failed");
+      }
+
+      toast.success("Account created! Please check your email for OTP.", { id: loadingToast });
+      
+      // OTP page redirect with encoded email
+      router.push(`/verify-otp?email=${encodeURIComponent(formData.email)}`);
+    } catch (err) {
+      console.error("Error signing up:", err);
+      toast.error(err.message || "Failed to create account", { id: loadingToast });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleSignIn = () => {
-    // TODO: Google OAuth Integration
-    console.log("Google sign-in clicked");
+    toast.error("Google Authentication is coming soon!");
   };
 
   return (
@@ -127,7 +155,8 @@ export default function SignupPage() {
 
           <button
             type="submit"
-            className="w-full flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2.5 rounded-xl text-sm transition-all shadow-md shadow-cyan-500/20 mt-2"
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2.5 rounded-xl text-sm transition-all shadow-md shadow-cyan-500/20 mt-2 disabled:opacity-50"
           >
             <UserPlus size={16} />
             Create Account

@@ -1,7 +1,7 @@
 import React from "react";
 import { CheckCircle2, Circle, Clock, Edit2, Trash2 } from "lucide-react";
 
-export default function TaskCard({ task, onToggle, onDelete }) {
+export default function TaskCard({ task, onToggle, onDelete, onEdit }) {
   const isCompleted = task.status === "Completed";
   const isInProgress = task.status === "In Progress";
 
@@ -57,9 +57,12 @@ export default function TaskCard({ task, onToggle, onDelete }) {
         </span>
 
         <div className="flex items-center gap-1 text-slate-500 border-l border-slate-800 pl-2">
-          <button className="p-1.5 hover:text-slate-200 rounded-lg hover:bg-slate-800/50 transition-colors">
-            <Edit2 size={16} />
-          </button>
+            <button
+              onClick={() => onEdit(task)}
+              className="p-1.5 hover:text-slate-200 rounded-lg hover:bg-slate-800/50 transition-colors"
+            >
+              <Edit2 size={16} />
+            </button>
           <button
             onClick={() => onDelete(task.id)}
             className="p-1.5 hover:text-rose-400 rounded-lg hover:bg-slate-800/50 transition-colors"

@@ -1,66 +1,230 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import toast from "react-hot-toast";
 import TaskHeader from "@/components/tasks/TaskHeader";
 import TaskFilterBar from "@/components/tasks/TaskFilterBar";
 import TaskCard from "@/components/tasks/TaskCard";
 import AddTaskModal from "@/components/tasks/AddTaskModal";
+import EditTaskModal from "@/components/tasks/EditTaskModal";
 
-const INITIAL_TASKS = [
-  { id: "1", title: "Redesign marketing landing page", category: "Design", dueDate: "2026-06-17", priority: "High", status: "In Progress" },
-  { id: "2", title: "Review authentication PR #147", category: "Development", dueDate: "2026-06-16", priority: "Medium", status: "Pending" },
-  { id: "3", title: "Write OpenAPI documentation", category: "Documentation", dueDate: "2026-06-15", priority: "Low", status: "Completed" },
-  { id: "4", title: "Sprint planning & retrospective", category: "Meeting", dueDate: "2026-06-15", priority: "High", status: "Completed" },
-  { id: "5", title: "Fix session expiry bug", category: "Development", dueDate: "2026-06-16", priority: "High", status: "In Progress" },
-  { id: "6", title: "Onboarding flow improvements", category: "Design", dueDate: "2026-06-20", priority: "Medium", status: "Pending" },
-];
+
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
+const TASKS_API_URL = `${BASE_URL}/api/tasks`;
+
+const getAuthHeaders = () => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("All");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+const [selectedTask, setSelectedTask] = useState(null);
 
+  // 1. GET: Fetch all tasks
+  const fetchTasks = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(TASKS_API_URL, { headers: getAuthHeaders() });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch tasks from server");
+      }
+
+      const data = await response.json();
+      const taskList = Array.isArray(data)
+        ? data
+        : data.tasks || data.data || [];
+
+      setTasks(taskList);
+    } catch (err) {
+      console.error("Error fetching tasks:", err);
+      setError(err.message);
+      toast.error("Failed to load tasks");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
+
+  // 2. POST: Add New Task
+  const handleAddTask = async (newTaskData) => {
+    const loadingToast = toast.loading("Creating task...");
+    try {
+      const response = await fetch(TASKS_API_URL, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(newTaskData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create task");
+      }
+
+      const createdTask = await response.json();
+      const savedTask = createdTask.task || createdTask.data || createdTask;
+
+      setTasks((prev) => [savedTask, ...prev]);
+      toast.success("Task created successfully!", { id: loadingToast });
+    } catch (err) {
+      console.error("Error adding task:", err);
+      toast.error(err.message || "Failed to add task", { id: loadingToast });
+    }
+  };
+
+  // 3. PUT: Toggle / Update Task Status
+  const toggleTaskStatus = async (id) => {
+    const targetTask = tasks.find((task) => (task._id || task.id) === id);
+    if (!targetTask) return;
+
+    const nextStatus =
+      targetTask.status === "Completed"
+        ? "Pending"
+        : targetTask.status === "Pending"
+        ? "In Progress"
+        : "Completed";
+
+    const loadingToast = toast.loading("Updating status...");
+
+    try {
+      const response = await fetch(`${TASKS_API_URL}/${id}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          ...targetTask,
+          status: nextStatus,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update task status");
+      }
+
+      const updatedData = await response.json();
+      const updatedTask = updatedData.task || updatedData.data || updatedData;
+
+      // Optimistic state update
+      setTasks((prev) =>
+        prev.map((task) => {
+          const taskId = task._id || task.id;
+          return taskId === id ? { ...task, ...updatedTask, status: nextStatus } : task;
+        })
+      );
+
+      toast.success(`Task marked as ${nextStatus}`, { id: loadingToast });
+    } catch (err) {
+      console.error("Error updating task:", err);
+      toast.error(err.message || "Failed to update task", { id: loadingToast });
+    }
+  };
+
+  const updateTask = async (id, updatedData) => {
+    const loadingToast = toast.loading("Updating task...");
+
+    try {
+        const response = await fetch(`${TASKS_API_URL}/${id}`, {
+            method: "PUT",
+            headers: getAuthHeaders(),
+            body: JSON.stringify(updatedData),
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to update task");
+        }
+
+        const data = await response.json();
+
+        const updatedTask =
+            data.task || data.data || data;
+
+        setTasks((prev) =>
+            prev.map((task) => {
+                const taskId = task._id || task.id;
+
+                return taskId === id
+                    ? { ...task, ...updatedTask }
+                    : task;
+            })
+        );
+
+        toast.success("Task updated successfully!", {
+            id: loadingToast,
+        });
+
+    } catch (err) {
+        console.error("Error updating task:", err);
+
+        toast.error(
+            err.message || "Failed to update task",
+            { id: loadingToast }
+        );
+    }
+};
+
+  const handleEditTask = (task) => {
+    setSelectedTask(task);
+    setIsEditModalOpen(true);
+};
+
+  // 4. DELETE: Delete Task
+  const deleteTask = async (id) => {
+    const loadingToast = toast.loading("Deleting task...");
+
+    try {
+      const response = await fetch(`${TASKS_API_URL}/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete task");
+      }
+
+      setTasks((prev) => prev.filter((task) => (task._id || task.id) !== id));
+      toast.success("Task deleted successfully!", { id: loadingToast });
+    } catch (err) {
+      console.error("Error deleting task:", err);
+      toast.error(err.message || "Failed to delete task", { id: loadingToast });
+    }
+  };
+
+  // Stats Calculation
   const stats = useMemo(() => {
     const done = tasks.filter((t) => t.status === "Completed").length;
     const inProgress = tasks.filter((t) => t.status === "In Progress").length;
     return { done, inProgress, total: tasks.length };
   }, [tasks]);
 
+  // Filtering Logic
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
-      const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === "All" || task.status === statusFilter;
-      const matchesPriority = priorityFilter === "All" || task.priority === priorityFilter;
+      const title = task.title || "";
+      const matchesSearch = title
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+      const matchesStatus =
+        statusFilter === "All" || task.status === statusFilter;
+      const matchesPriority =
+        priorityFilter === "All" || task.priority === priorityFilter;
       return matchesSearch && matchesStatus && matchesPriority;
     });
   }, [tasks, searchQuery, statusFilter, priorityFilter]);
-
-  const handleAddTask = (newTask) => {
-    const taskToAdd = {
-      id: Date.now().toString(),
-      ...newTask,
-    };
-    setTasks((prev) => [taskToAdd, ...prev]);
-  };
-
-  const toggleTaskStatus = (id) => {
-    setTasks((prev) =>
-      prev.map((task) => {
-        if (task.id === id) {
-          const nextStatus =
-            task.status === "Completed" ? "Pending" : task.status === "Pending" ? "In Progress" : "Completed";
-          return { ...task, status: nextStatus };
-        }
-        return task;
-      })
-    );
-  };
-
-  const deleteTask = (id) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id));
-  };
 
   return (
     <div className="text-slate-200 space-y-8">
@@ -76,14 +240,26 @@ export default function TasksPage() {
       />
 
       <div className="space-y-3">
-        {filteredTasks.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-12 bg-[#111923] rounded-2xl border border-cyan-900/20 text-cyan-400">
+            Loading tasks...
+          </div>
+        ) : error ? (
+          <div className="text-center py-12 bg-[#111923] rounded-2xl border border-rose-900/30 text-rose-400">
+            {error}. Check if backend server is running.
+          </div>
+        ) : filteredTasks.length > 0 ? (
           filteredTasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onToggle={toggleTaskStatus}
-              onDelete={deleteTask}
-            />
+        <TaskCard
+          key={task._id || task.id}
+          task={{
+            ...task,
+            id: task._id || task.id,
+          }}
+          onToggle={toggleTaskStatus}
+          onDelete={deleteTask}
+          onEdit={handleEditTask}
+        />
           ))
         ) : (
           <div className="text-center py-12 bg-[#111923] rounded-2xl border border-cyan-900/20 text-slate-500">
@@ -97,6 +273,16 @@ export default function TasksPage() {
         onClose={() => setIsModalOpen(false)}
         onAddTask={handleAddTask}
       />
+
+      <EditTaskModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedTask(null);
+          }}
+          task={selectedTask}
+          onUpdateTask={updateTask}
+        />
     </div>
   );
 }

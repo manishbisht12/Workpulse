@@ -72,16 +72,15 @@ export default function AddTaskModal({ isOpen, onClose, onAddTask }) {
               <label className="block text-xs font-semibold text-slate-400 mb-1.5">
                 Category
               </label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full bg-[#111923] border border-cyan-900/30 rounded-xl px-3 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-cyan-500/50 transition-colors"
-              >
-                <option value="Development">Development</option>
-                <option value="Design">Design</option>
-                <option value="Documentation">Documentation</option>
-                <option value="Meeting">Meeting</option>
-              </select>
+              <input
+                  type="text"
+                  placeholder="e.g. Development"
+                  value={formData.category}
+                  onChange={(e) =>
+                    setFormData({ ...formData, category: e.target.value })
+                  }
+                  className="w-full bg-[#111923] border border-cyan-900/30 rounded-xl px-3 py-2.5 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                />
             </div>
 
             <div>

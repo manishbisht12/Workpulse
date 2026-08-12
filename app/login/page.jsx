@@ -3,21 +3,57 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import { LogIn, Mail, Lock, Zap } from "lucide-react";
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
 
 export default function LoginPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({ email: "", password: "" });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Login submitted:", formData);
-    router.push("/dashboard");
+    const loadingToast = toast.loading("Signing in...");
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      // Account not verified — redirect to OTP page
+      if (!response.ok && data.isVerified === false) {
+        toast.error("Please verify your email first.", { id: loadingToast });
+        router.push(`/verify-otp?email=${encodeURIComponent(data.email)}`);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed");
+      }
+
+      // Store token and user info in localStorage
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      toast.success(`Welcome back, ${data.user.name}!`, { id: loadingToast });
+      router.push("/dashboard");
+    } catch (err) {
+      console.error("Login error:", err);
+      toast.error(err.message || "Failed to sign in", { id: loadingToast });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleSignIn = () => {
-    // TODO: Google OAuth Integration (NextAuth / Firebase / Supabase)
-    console.log("Google sign-in clicked");
+    toast.error("Google Authentication is coming soon!");
   };
 
   return (
@@ -115,7 +151,8 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2.5 rounded-xl text-sm transition-all shadow-md shadow-cyan-500/20 mt-2"
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2.5 rounded-xl text-sm transition-all shadow-md shadow-cyan-500/20 mt-2 disabled:opacity-50"
           >
             <LogIn size={16} />
             Sign In
@@ -124,7 +161,7 @@ export default function LoginPage() {
 
         {/* Footer Link */}
         <p className="text-center text-xs text-slate-500 mt-6">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link href="/signup" className="text-cyan-400 font-semibold hover:underline">
             Sign up
           </Link>

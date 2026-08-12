@@ -1,4 +1,5 @@
 import { Outfit } from "next/font/google";
+import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -15,6 +16,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className="h-full antialiased">
       <body className={`${outfit.className} min-h-full flex flex-col text-[17px]`}>
+        <Toaster position="top-center" reverseOrder={false} />
         {children}
       </body>
     </html>
