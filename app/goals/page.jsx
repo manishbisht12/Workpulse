@@ -1,80 +1,113 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import toast from "react-hot-toast";
 import GoalHeader from "@/components/goals/GoalHeader";
 import GoalCard from "@/components/goals/GoalCard";
 import GoalModal from "@/components/goals/GoalModal";
 
-const INITIAL_GOALS = [
-  {
-    id: "1",
-    title: "Complete React Course",
-    category: "Learning",
-    current: 14,
-    target: 20,
-    unit: "lessons",
-    dueDate: "2026-07-01",
-    isOverdue: true,
-    colorTheme: "purple",
-  },
-  {
-    id: "2",
-    title: "Run 5K in under 25 min",
-    category: "Fitness",
-    current: 3.2,
-    target: 5,
-    unit: "km",
-    dueDate: "2026-06-30",
-    isOverdue: true,
-    colorTheme: "purple",
-  },
-  {
-    id: "3",
-    title: "Build Emergency Fund",
-    category: "Finance",
-    current: 7500,
-    target: 10000,
-    formattedCurrent: "$7,500",
-    formattedTarget: "$10,000",
-    unit: "",
-    dueDate: "2026-09-01",
-    timeLeft: "41d left",
-    colorTheme: "emerald",
-  },
-  {
-    id: "4",
-    title: "Read 12 books this year",
-    category: "Learning",
-    current: 5,
-    target: 12,
-    unit: "books",
-    dueDate: "2026-12-31",
-    timeLeft: "162d left",
-    colorTheme: "orange",
-  },
-  {
-    id: "5",
-    title: "Lose 10 pounds",
-    category: "Health",
-    current: 4,
-    target: 10,
-    unit: "lbs",
-    dueDate: "2026-08-15",
-    timeLeft: "24d left",
-    colorTheme: "orange",
-  },
-];
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
+const GOALS_API_URL = `${BASE_URL}/api/goals`;
+
+const getAuthHeaders = () => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
 
 export default function GoalsPage() {
-  const [goals, setGoals] = useState(INITIAL_GOALS);
+  const [goals, setGoals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleAddGoal = (newGoal) => {
-    setGoals((prev) => [newGoal, ...prev]);
+  // 1. GET: Fetch all goals from Backend
+  const fetchGoals = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(GOALS_API_URL, {
+        headers: getAuthHeaders(),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to fetch goals");
+      }
+
+      const goalsList = Array.isArray(data)
+        ? data
+        : data?.goals || data?.data || [];
+
+      setGoals(goalsList);
+    } catch (err) {
+      console.error("Error fetching goals:", err);
+      setError(err.message);
+      toast.error("Failed to load goals");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchGoals();
+  }, [fetchGoals]);
+
+  // 2. POST: Add New Goal
+  const handleAddGoal = async (newGoalData) => {
+    const loadingToast = toast.loading("Creating goal...");
+    try {
+      const response = await fetch(GOALS_API_URL, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(newGoalData),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || "Failed to create goal");
+      }
+
+      const savedGoal = data?.goal || data?.data || data;
+
+      if (savedGoal) {
+        setGoals((prev) => [savedGoal, ...prev]);
+        toast.success("Goal created successfully!", { id: loadingToast });
+      } else {
+        throw new Error("Invalid response format from server");
+      }
+    } catch (err) {
+      console.error("Error adding goal:", err);
+      toast.error(err.message || "Failed to add goal", { id: loadingToast });
+    }
   };
 
-  const deleteGoal = (id) => {
-    setGoals((prev) => prev.filter((g) => g.id !== id));
+  // 3. DELETE: Delete Goal by ID
+  const deleteGoal = async (id) => {
+    const loadingToast = toast.loading("Deleting goal...");
+    try {
+      const response = await fetch(`${GOALS_API_URL}/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to delete goal");
+      }
+
+      setGoals((prev) => prev.filter((g) => (g._id || g.id) !== id));
+      toast.success("Goal deleted successfully!", { id: loadingToast });
+    } catch (err) {
+      console.error("Error deleting goal:", err);
+      toast.error(err.message || "Failed to delete goal", { id: loadingToast });
+    }
   };
 
   return (
@@ -84,11 +117,29 @@ export default function GoalsPage() {
         onNewGoal={() => setIsModalOpen(true)}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {goals.map((goal) => (
-          <GoalCard key={goal.id} goal={goal} onDelete={deleteGoal} />
-        ))}
-      </div>
+      {loading ? (
+        <div className="text-center py-16 bg-[#0f1520] rounded-2xl border border-slate-800 text-cyan-400 font-medium">
+          Loading goals...
+        </div>
+      ) : error ? (
+        <div className="text-center py-16 bg-[#0f1520] rounded-2xl border border-rose-900/30 text-rose-400 font-medium">
+          {error}. Make sure your backend API is running.
+        </div>
+      ) : goals.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {goals.map((goal) => (
+            <GoalCard
+              key={goal._id || goal.id}
+              goal={goal}
+              onDelete={deleteGoal}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-16 bg-[#0f1520] rounded-2xl border border-slate-800 text-slate-500 font-medium">
+          No goals found. Click <strong className="text-cyan-400">"New Goal"</strong> to get started!
+        </div>
+      )}
 
       <GoalModal
         isOpen={isModalOpen}

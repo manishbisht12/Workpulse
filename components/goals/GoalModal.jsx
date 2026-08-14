@@ -19,10 +19,9 @@ export default function GoalModal({ isOpen, onClose, onSave }) {
     e.preventDefault();
     if (!title || !target || !dueDate) return;
 
-    // Pick a random color theme automatically
-    const randomColorTheme = COLOR_THEMES[Math.floor(Math.random() * COLOR_THEMES.length)];
+    const randomColorTheme =
+      COLOR_THEMES[Math.floor(Math.random() * COLOR_THEMES.length)];
 
-    // Calculate time left / overdue status dynamically
     const now = new Date();
     const targetDate = new Date(dueDate);
     const diffTime = targetDate - now;
@@ -32,7 +31,6 @@ export default function GoalModal({ isOpen, onClose, onSave }) {
     const timeLeft = isOverdue ? null : `${diffDays}d left`;
 
     onSave({
-      id: Date.now().toString(),
       title,
       category,
       current: Number(current) || 0,
@@ -44,7 +42,7 @@ export default function GoalModal({ isOpen, onClose, onSave }) {
       colorTheme: randomColorTheme,
     });
 
-    // Reset form & close
+    // Reset form
     setTitle("");
     setCategory("Learning");
     setCurrent("");
@@ -57,7 +55,6 @@ export default function GoalModal({ isOpen, onClose, onSave }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-all">
       <div className="relative w-full max-w-lg bg-[#0b0f17] border border-[#1e293b]/70 rounded-2xl p-6 shadow-2xl space-y-6 text-slate-100">
-        
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-[#1e293b]/60">
           <div className="flex items-center gap-2.5">
@@ -75,8 +72,6 @@ export default function GoalModal({ isOpen, onClose, onSave }) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          
-          {/* Title */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
               Goal Title <span className="text-rose-400">*</span>
@@ -91,7 +86,6 @@ export default function GoalModal({ isOpen, onClose, onSave }) {
             />
           </div>
 
-          {/* Category */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Category</label>
             <select
@@ -106,7 +100,6 @@ export default function GoalModal({ isOpen, onClose, onSave }) {
             </select>
           </div>
 
-          {/* Target, Current & Unit */}
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Current</label>
@@ -145,7 +138,6 @@ export default function GoalModal({ isOpen, onClose, onSave }) {
             </div>
           </div>
 
-          {/* Due Date */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
               Due Date <span className="text-rose-400">*</span>
@@ -159,7 +151,6 @@ export default function GoalModal({ isOpen, onClose, onSave }) {
             />
           </div>
 
-          {/* Buttons */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#1e293b]/60">
             <button
               type="button"

@@ -8,8 +8,6 @@ import TaskCard from "@/components/tasks/TaskCard";
 import AddTaskModal from "@/components/tasks/AddTaskModal";
 import EditTaskModal from "@/components/tasks/EditTaskModal";
 
-
-
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
 const TASKS_API_URL = `${BASE_URL}/api/tasks`;
 
@@ -31,7 +29,7 @@ export default function TasksPage() {
   const [priorityFilter, setPriorityFilter] = useState("All");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
 
   // 1. GET: Fetch all tasks
   const fetchTasks = useCallback(async () => {
@@ -40,14 +38,15 @@ const [selectedTask, setSelectedTask] = useState(null);
       setError(null);
       const response = await fetch(TASKS_API_URL, { headers: getAuthHeaders() });
 
+      const data = await response.json().catch(() => null);
+
       if (!response.ok) {
-        throw new Error("Failed to fetch tasks from server");
+        throw new Error(data?.message || "Failed to fetch tasks from server");
       }
 
-      const data = await response.json();
       const taskList = Array.isArray(data)
         ? data
-        : data.tasks || data.data || [];
+        : data?.tasks || data?.data || [];
 
       setTasks(taskList);
     } catch (err) {
@@ -63,7 +62,7 @@ const [selectedTask, setSelectedTask] = useState(null);
     fetchTasks();
   }, [fetchTasks]);
 
-  // 2. POST: Add New Task
+  // 2. POST: Add New Task (Fixed Error & Payload Handling)
   const handleAddTask = async (newTaskData) => {
     const loadingToast = toast.loading("Creating task...");
     try {
@@ -73,15 +72,21 @@ const [selectedTask, setSelectedTask] = useState(null);
         body: JSON.stringify(newTaskData),
       });
 
+      const data = await response.json().catch(() => null);
+
       if (!response.ok) {
-        throw new Error("Failed to create task");
+        // Backend se exact error message extraction
+        throw new Error(data?.message || data?.error || "Failed to create task");
       }
 
-      const createdTask = await response.json();
-      const savedTask = createdTask.task || createdTask.data || createdTask;
+      const savedTask = data?.task || data?.data || data;
 
-      setTasks((prev) => [savedTask, ...prev]);
-      toast.success("Task created successfully!", { id: loadingToast });
+      if (savedTask) {
+        setTasks((prev) => [savedTask, ...prev]);
+        toast.success("Task created successfully!", { id: loadingToast });
+      } else {
+        throw new Error("Invalid response format from server");
+      }
     } catch (err) {
       console.error("Error adding task:", err);
       toast.error(err.message || "Failed to add task", { id: loadingToast });
@@ -112,12 +117,13 @@ const [selectedTask, setSelectedTask] = useState(null);
         }),
       });
 
+      const data = await response.json().catch(() => null);
+
       if (!response.ok) {
-        throw new Error("Failed to update task status");
+        throw new Error(data?.message || "Failed to update task status");
       }
 
-      const updatedData = await response.json();
-      const updatedTask = updatedData.task || updatedData.data || updatedData;
+      const updatedTask = data?.task || data?.data || data;
 
       // Optimistic state update
       setTasks((prev) =>
@@ -134,53 +140,47 @@ const [selectedTask, setSelectedTask] = useState(null);
     }
   };
 
+  // Update Task Modal Action
   const updateTask = async (id, updatedData) => {
     const loadingToast = toast.loading("Updating task...");
 
     try {
-        const response = await fetch(`${TASKS_API_URL}/${id}`, {
-            method: "PUT",
-            headers: getAuthHeaders(),
-            body: JSON.stringify(updatedData),
-        });
+      const response = await fetch(`${TASKS_API_URL}/${id}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(updatedData),
+      });
 
-        if (!response.ok) {
-            throw new Error("Failed to update task");
-        }
+      const data = await response.json().catch(() => null);
 
-        const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to update task");
+      }
 
-        const updatedTask =
-            data.task || data.data || data;
+      const updatedTask = data?.task || data?.data || data;
 
-        setTasks((prev) =>
-            prev.map((task) => {
-                const taskId = task._id || task.id;
+      setTasks((prev) =>
+        prev.map((task) => {
+          const taskId = task._id || task.id;
+          return taskId === id ? { ...task, ...updatedTask } : task;
+        })
+      );
 
-                return taskId === id
-                    ? { ...task, ...updatedTask }
-                    : task;
-            })
-        );
-
-        toast.success("Task updated successfully!", {
-            id: loadingToast,
-        });
-
+      toast.success("Task updated successfully!", {
+        id: loadingToast,
+      });
     } catch (err) {
-        console.error("Error updating task:", err);
-
-        toast.error(
-            err.message || "Failed to update task",
-            { id: loadingToast }
-        );
+      console.error("Error updating task:", err);
+      toast.error(err.message || "Failed to update task", {
+        id: loadingToast,
+      });
     }
-};
+  };
 
   const handleEditTask = (task) => {
     setSelectedTask(task);
     setIsEditModalOpen(true);
-};
+  };
 
   // 4. DELETE: Delete Task
   const deleteTask = async (id) => {
@@ -192,8 +192,10 @@ const [selectedTask, setSelectedTask] = useState(null);
         headers: getAuthHeaders(),
       });
 
+      const data = await response.json().catch(() => null);
+
       if (!response.ok) {
-        throw new Error("Failed to delete task");
+        throw new Error(data?.message || "Failed to delete task");
       }
 
       setTasks((prev) => prev.filter((task) => (task._id || task.id) !== id));
@@ -215,13 +217,9 @@ const [selectedTask, setSelectedTask] = useState(null);
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
       const title = task.title || "";
-      const matchesSearch = title
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-      const matchesStatus =
-        statusFilter === "All" || task.status === statusFilter;
-      const matchesPriority =
-        priorityFilter === "All" || task.priority === priorityFilter;
+      const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === "All" || task.status === statusFilter;
+      const matchesPriority = priorityFilter === "All" || task.priority === priorityFilter;
       return matchesSearch && matchesStatus && matchesPriority;
     });
   }, [tasks, searchQuery, statusFilter, priorityFilter]);
@@ -250,16 +248,16 @@ const [selectedTask, setSelectedTask] = useState(null);
           </div>
         ) : filteredTasks.length > 0 ? (
           filteredTasks.map((task) => (
-        <TaskCard
-          key={task._id || task.id}
-          task={{
-            ...task,
-            id: task._id || task.id,
-          }}
-          onToggle={toggleTaskStatus}
-          onDelete={deleteTask}
-          onEdit={handleEditTask}
-        />
+            <TaskCard
+              key={task._id || task.id}
+              task={{
+                ...task,
+                id: task._id || task.id,
+              }}
+              onToggle={toggleTaskStatus}
+              onDelete={deleteTask}
+              onEdit={handleEditTask}
+            />
           ))
         ) : (
           <div className="text-center py-12 bg-[#111923] rounded-2xl border border-cyan-900/20 text-slate-500">
@@ -275,14 +273,14 @@ const [selectedTask, setSelectedTask] = useState(null);
       />
 
       <EditTaskModal
-          isOpen={isEditModalOpen}
-          onClose={() => {
-            setIsEditModalOpen(false);
-            setSelectedTask(null);
-          }}
-          task={selectedTask}
-          onUpdateTask={updateTask}
-        />
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedTask(null);
+        }}
+        task={selectedTask}
+        onUpdateTask={updateTask}
+      />
     </div>
   );
 }
