@@ -36,11 +36,11 @@ export default function EditTaskModal({
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        if (!formData.title.trim() || !formData.dueDate) {
+        if (!formData.title.trim() ) {
             return;
         }
 
-        onUpdateTask(task.id, formData);
+        onUpdateTask(task._id, formData);
         onClose();
     };
 
