@@ -3,22 +3,26 @@
 import React from "react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
 
-const data = [
-  { day: "Mon", score: 72 },
-  { day: "Tue", score: 85 },
-  { day: "Wed", score: 68 },
-  { day: "Thu", score: 90 },
-  { day: "Fri", score: 78 },
-  { day: "Sat", score: 55 },
-  { day: "Sun", score: 40 },
-];
+export default function ProductivityScoreChart({ data }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-[#0d131a] border border-cyan-900/30 rounded-2xl p-6 space-y-4">
+        <div>
+          <h3 className="text-base font-bold text-slate-100">Daily Tasks Completed</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Tasks done per day (last 7 days)</p>
+        </div>
+        <div className="h-56 w-full flex items-center justify-center text-slate-500">
+          No data available
+        </div>
+      </div>
+    );
+  }
 
-export default function ProductivityScoreChart() {
   return (
     <div className="bg-[#0d131a] border border-cyan-900/30 rounded-2xl p-6 space-y-4">
       <div>
-        <h3 className="text-base font-bold text-slate-100">Daily Productivity Score</h3>
-        <p className="text-xs text-slate-500 mt-0.5">This week vs target (80)</p>
+        <h3 className="text-base font-bold text-slate-100">Daily Tasks Completed</h3>
+        <p className="text-xs text-slate-500 mt-0.5">Tasks done per day (last 7 days)</p>
       </div>
 
       <div className="h-56 w-full">
@@ -43,8 +47,7 @@ export default function ProductivityScoreChart() {
               fontSize={12} 
               tickLine={false} 
               axisLine={false} 
-              domain={[0, 100]} 
-              ticks={[0, 25, 50, 75, 100]} 
+              allowDecimals={false}
             />
             
             <Tooltip 

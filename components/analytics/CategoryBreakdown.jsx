@@ -3,16 +3,23 @@
 import React from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 
-// Updated color palette to match your Dark Cyan / Teal theme
-const categories = [
-  { name: "Development", percentage: 38, color: "#06b6d4" }, // Vibrant Cyan
-  { name: "Design", percentage: 24, color: "#14b8a6" },      // Teal
-  { name: "Meetings", percentage: 18, color: "#0284c7" },    // Sky / Cyan-Blue
-  { name: "Learning", percentage: 12, color: "#10b981" },    // Emerald
-  { name: "Other", percentage: 8, color: "#f59e0b" },       // Amber Accent
-];
+export default function CategoryBreakdown({ data }) {
+  const categories = data;
 
-export default function CategoryBreakdown() {
+  if (!categories || categories.length === 0) {
+    return (
+      <div className="bg-[#0d131a] border border-cyan-900/30 rounded-2xl p-6 space-y-6">
+        <div>
+          <h3 className="text-base font-bold text-slate-100">Category Breakdown</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Time allocation this period</p>
+        </div>
+        <div className="h-52 w-full flex items-center justify-center text-slate-500">
+          No data available
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-[#0d131a] border border-cyan-900/30 rounded-2xl p-6 space-y-6">
       <div>

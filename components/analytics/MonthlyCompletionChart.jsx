@@ -10,16 +10,25 @@ import {
   Tooltip,
 } from "recharts";
 
-const data = [
-  { month: "Jan", tasks: 145, habits: 90 },
-  { month: "Feb", tasks: 160, habits: 95 },
-  { month: "Mar", tasks: 175, habits: 102 },
-  { month: "Apr", tasks: 155, habits: 98 },
-  { month: "May", tasks: 190, habits: 115 },
-  { month: "Jun", tasks: 85, habits: 60 },
-];
+export default function MonthlyCompletionChart({ data }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-[#0d131a] border border-cyan-900/30 rounded-2xl p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-base font-bold text-slate-100">
+              Monthly Task & Habit Completion
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">6-month trend — 2026</p>
+          </div>
+        </div>
+        <div className="h-56 w-full flex items-center justify-center text-slate-500">
+          No data available
+        </div>
+      </div>
+    );
+  }
 
-export default function MonthlyCompletionChart() {
   return (
     <div className="bg-[#0d131a] border border-cyan-900/30 rounded-2xl p-6 space-y-4">
       {/* Header & Legend Indicators */}

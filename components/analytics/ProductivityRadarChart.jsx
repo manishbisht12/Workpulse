@@ -3,16 +3,21 @@
 import React from "react";
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar, Tooltip } from "recharts";
 
-const data = [
-  { subject: "Tasks", A: 85 },
-  { subject: "Habits", A: 78 },
-  { subject: "Focus", A: 90 },
-  { subject: "Goals", A: 70 },
-  { subject: "Balance", A: 65 },
-  { subject: "Energy", A: 80 },
-];
+export default function ProductivityRadarChart({ data }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-[#0d131a] border border-cyan-900/30 rounded-2xl p-6 space-y-4">
+        <div>
+          <h3 className="text-base font-bold text-slate-100">Productivity Radar</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Performance across 6 dimensions</p>
+        </div>
+        <div className="h-56 w-full flex items-center justify-center text-slate-500">
+          No data available
+        </div>
+      </div>
+    );
+  }
 
-export default function ProductivityRadarChart() {
   return (
     <div className="bg-[#0d131a] border border-cyan-900/30 rounded-2xl p-6 space-y-4">
       <div>

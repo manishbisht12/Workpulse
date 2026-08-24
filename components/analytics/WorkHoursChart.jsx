@@ -3,17 +3,21 @@
 import React from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 
-const data = [
-  { day: "Mon", hours: 7.2, color: "#6366f1" },
-  { day: "Tue", hours: 8.1, color: "#10b981" },
-  { day: "Wed", hours: 6.8, color: "#6366f1" },
-  { day: "Thu", hours: 9.0, color: "#10b981" },
-  { day: "Fri", hours: 7.9, color: "#10b981" },
-  { day: "Sat", hours: 4.5, color: "#8b5cf6" },
-  { day: "Sun", hours: 3.0, color: "#8b5cf6" },
-];
+export default function WorkHoursChart({ data }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-[#0d131a] border border-cyan-900/30 rounded-2xl p-6 space-y-4">
+        <div>
+          <h3 className="text-base font-bold text-slate-100">Daily Work Hours</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Target: 8 hours/day</p>
+        </div>
+        <div className="h-56 w-full flex items-center justify-center text-slate-500">
+          No data available
+        </div>
+      </div>
+    );
+  }
 
-export default function WorkHoursChart() {
   return (
     <div className="bg-[#0d131a] border border-cyan-900/30 rounded-2xl p-6 space-y-4">
       <div>

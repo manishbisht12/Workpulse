@@ -1,60 +1,70 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import CalendarHeader from "@/components/calendar/CalendarHeader";
 import MonthGrid from "@/components/calendar/MonthGrid";
 import ContributionHeatmap from "@/components/calendar/ContributionHeatmap";
 
-// July 2026 Grid Data (Starts on Wednesday)
-const JULY_2026_DAYS = [
-  ...Array(3).fill({ isCurrentMonth: false }), // Empty Sun, Mon, Tue
-  { day: 1, tasksDone: 8, isCurrentMonth: true },
-  { day: 2, tasksDone: 5, isCurrentMonth: true },
-  { day: 3, tasksDone: 12, isCurrentMonth: true },
-  { day: 4, tasksDone: 3, isCurrentMonth: true },
-  { day: 5, tasksDone: 9, isCurrentMonth: true },
-  { day: 6, tasksDone: 0, isCurrentMonth: true },
-  { day: 7, tasksDone: 4, isCurrentMonth: true },
-  { day: 8, tasksDone: 11, isCurrentMonth: true },
-  { day: 9, tasksDone: 7, isCurrentMonth: true },
-  { day: 10, tasksDone: 6, isCurrentMonth: true },
-  { day: 11, tasksDone: 2, isCurrentMonth: true },
-  { day: 12, tasksDone: 8, isCurrentMonth: true },
-  { day: 13, tasksDone: 14, isCurrentMonth: true },
-  { day: 14, tasksDone: 5, isCurrentMonth: true },
-  { day: 15, tasksDone: 0, isCurrentMonth: true },
-  { day: 16, tasksDone: 0, isCurrentMonth: true },
-  { day: 17, tasksDone: 0, isCurrentMonth: true },
-  { day: 18, tasksDone: 0, isCurrentMonth: true },
-  { day: 19, tasksDone: 0, isCurrentMonth: true },
-  { day: 20, tasksDone: 0, isCurrentMonth: true },
-  { day: 21, tasksDone: 0, isCurrentMonth: true },
-  { day: 22, tasksDone: 0, isCurrentMonth: true },
-  { day: 23, tasksDone: 0, isCurrentMonth: true },
-  { day: 24, tasksDone: 0, isCurrentMonth: true },
-  { day: 25, tasksDone: 0, isCurrentMonth: true },
-  { day: 26, tasksDone: 0, isCurrentMonth: true },
-  { day: 27, tasksDone: 0, isCurrentMonth: true },
-  { day: 28, tasksDone: 0, isCurrentMonth: true },
-  { day: 29, tasksDone: 0, isCurrentMonth: true },
-  { day: 30, tasksDone: 0, isCurrentMonth: true },
-  { day: 31, tasksDone: 0, isCurrentMonth: true },
-];
-
 export default function CalendarPage() {
-  const [currentMonth, setCurrentMonth] = useState("July 2026");
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [calendarData, setCalendarData] = useState({ monthGrid: [], heatmapData: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchCalendarData = async () => {
+      try {
+        setLoading(true);
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const response = await fetch(`http://localhost:5000/api/calendar?year=${year}&month=${month}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch calendar data");
+        }
+        const data = await response.json();
+        setCalendarData(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCalendarData();
+  }, [currentDate]);
+
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const currentMonthStr = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+
+  const handlePrev = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  };
+
+  const handleNext = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <CalendarHeader
-        monthYear={currentMonth}
-        onPrev={() => {}}
-        onNext={() => {}}
+        monthYear={currentMonthStr}
+        onPrev={handlePrev}
+        onNext={handleNext}
       />
 
-      <MonthGrid monthData={JULY_2026_DAYS} />
-
-      <ContributionHeatmap />
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400"></div>
+        </div>
+      ) : error ? (
+        <div className="flex justify-center items-center h-64 text-red-500">
+          Error: {error}
+        </div>
+      ) : (
+        <>
+          <MonthGrid monthData={calendarData.monthGrid} />
+          <ContributionHeatmap data={calendarData.heatmapData} />
+        </>
+      )}
     </div>
   );
 }
