@@ -1,39 +1,31 @@
 "use client";
 
-import React from "react";
-import {
+import React, { useState, useEffect } from "react";
+import { CheckSquare, Repeat, Camera, Target, AlertCircle } from "lucide-react";
+import TimelineHeader from "@/components/timeline/TimelineHeader";
+import TimelineItem from "@/components/timeline/TimelineItem";
+import { apiFetch } from "@/lib/api";
+
+const iconMap = {
   CheckSquare,
   Repeat,
   Camera,
   Target,
   AlertCircle,
-} from "lucide-react";
-import TimelineHeader from "@/components/timeline/TimelineHeader";
-import TimelineItem from "@/components/timeline/TimelineItem";
-
-const iconMap = {
-  CheckSquare: CheckSquare,
-  Repeat: Repeat,
-  Camera: Camera,
-  Target: Target,
-  AlertCircle: AlertCircle,
 };
 
 export default function TimelinePage() {
-  const [timelineData, setTimelineData] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
+  const [timelineData, setTimelineData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchTimeline = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://localhost:5000/api/timeline");
-        if (!response.ok) {
-          throw new Error("Failed to fetch timeline data");
-        }
-        const data = await response.json();
-        setTimelineData(data);
+        setError(null);
+        const data = await apiFetch("/api/timeline");
+        setTimelineData(Array.isArray(data) ? data : []);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -45,10 +37,8 @@ export default function TimelinePage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
       <TimelineHeader />
 
-      {/* Container Box */}
       <div className="bg-[#0d131a] border border-cyan-900/30 rounded-2xl p-6 md:p-8">
         {loading ? (
           <div className="flex justify-center items-center py-12">

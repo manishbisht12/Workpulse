@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import CalendarHeader from "@/components/calendar/CalendarHeader";
 import MonthGrid from "@/components/calendar/MonthGrid";
 import ContributionHeatmap from "@/components/calendar/ContributionHeatmap";
+import { apiFetch } from "@/lib/api";
 
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -15,13 +16,10 @@ export default function CalendarPage() {
     const fetchCalendarData = async () => {
       try {
         setLoading(true);
-        const year = currentDate.getFullYear();
+        setError(null);
+        const year  = currentDate.getFullYear();
         const month = currentDate.getMonth();
-        const response = await fetch(`http://localhost:5000/api/calendar?year=${year}&month=${month}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch calendar data");
-        }
-        const data = await response.json();
+        const data = await apiFetch(`/api/calendar?year=${year}&month=${month}`);
         setCalendarData(data);
       } catch (err) {
         setError(err.message);
@@ -32,24 +30,18 @@ export default function CalendarPage() {
     fetchCalendarData();
   }, [currentDate]);
 
-  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const currentMonthStr = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
 
-  const handlePrev = () => {
+  const handlePrev = () =>
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  };
 
-  const handleNext = () => {
+  const handleNext = () =>
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <CalendarHeader
-        monthYear={currentMonthStr}
-        onPrev={handlePrev}
-        onNext={handleNext}
-      />
+      <CalendarHeader monthYear={currentMonthStr} onPrev={handlePrev} onNext={handleNext} />
 
       {loading ? (
         <div className="flex justify-center items-center h-64">

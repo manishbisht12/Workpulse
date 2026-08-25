@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { TrendingUp, Clock, CheckSquare, Repeat } from "lucide-react";
 import AnalyticsHeader from "@/components/analytics/AnalyticsHeader";
 import StatCard from "@/components/analytics/StatCard";
@@ -8,6 +8,7 @@ import ProductivityScoreChart from "@/components/analytics/ProductivityScoreChar
 import MonthlyCompletionChart from "@/components/analytics/MonthlyCompletionChart";
 import ProductivityRadarChart from "@/components/analytics/ProductivityRadarChart";
 import CategoryBreakdown from "@/components/analytics/CategoryBreakdown";
+import { apiFetch } from "@/lib/api";
 
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState("7d");
@@ -15,15 +16,12 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://localhost:5000/api/analytics");
-        if (!response.ok) {
-          throw new Error("Failed to fetch analytics data");
-        }
-        const data = await response.json();
+        setError(null);
+        const data = await apiFetch("/api/analytics");
         setAnalyticsData(data);
       } catch (err) {
         setError(err.message);
@@ -69,7 +67,7 @@ export default function AnalyticsPage() {
           colorTheme={topStats.avgProductivity.colorTheme}
         />
         <StatCard
-          title="Total Goals"
+          title="Hours Worked (30d)"
           value={topStats.totalHours.value}
           changeText={topStats.totalHours.changeText}
           icon={Clock}
@@ -91,12 +89,12 @@ export default function AnalyticsPage() {
         />
       </div>
 
-      {/* Row 1: Line Area Chart (Full Width now) */}
+      {/* Row 1: Productivity Score Chart */}
       <div className="grid grid-cols-1 gap-5">
         <ProductivityScoreChart data={analyticsData.productivityScore} />
       </div>
 
-      {/* Row 2: Monthly Completion Trend & Radar Chart */}
+      {/* Row 2: Monthly Completion + Radar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <MonthlyCompletionChart data={analyticsData.monthlyCompletion} />
         <ProductivityRadarChart data={analyticsData.productivityRadar} />

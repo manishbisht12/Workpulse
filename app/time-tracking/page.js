@@ -1,95 +1,123 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import toast from "react-hot-toast";
 import TimerHeader from "@/components/timetracking/TimerHeader";
 import TimeStatsCards from "@/components/timetracking/TimeStatsCards";
 import TimeLogList from "@/components/timetracking/TimeLogList";
-
-const INITIAL_LOGS = [
-  {
-    id: "1",
-    taskName: "Build Goal Tracker API & Controllers",
-    category: "Development",
-    duration: 5420,
-    date: "Aug 10, 08:30 PM",
-  },
-  {
-    id: "2",
-    taskName: "Design WorkPulse Dark Theme Dashboard UI",
-    category: "Design",
-    duration: 3600,
-    date: "Aug 10, 04:15 PM",
-  },
-];
+import { apiFetch } from "@/lib/api";
 
 export default function TimeTrackingPage() {
-  const [taskName, setTaskName] = useState("");
-  const [category, setCategory] = useState("Development");
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [seconds, setSeconds] = useState(0);
-  const [logs, setLogs] = useState(INITIAL_LOGS);
+  const [taskName,        setTaskName]        = useState("");
+  const [category,       setCategory]        = useState("Development");
+  const [isTimerRunning, setIsTimerRunning]   = useState(false);
+  const [seconds,        setSeconds]         = useState(0);
 
-  // Timer counter
+  // ── Real data from DB ────────────────────────────────────────────────────
+  const [logs,       setLogs]       = useState([]);
+  const [logsLoading, setLogsLoading] = useState(true);
+  const [saving,     setSaving]     = useState(false);
+
+  // ── Fetch time logs from backend ─────────────────────────────────────────
+  const fetchLogs = useCallback(async () => {
+    try {
+      setLogsLoading(true);
+      const data = await apiFetch("/api/timelogs");
+      // data = { success, count, totalMinutes, totalHours, data: [...] }
+      setLogs(Array.isArray(data.data) ? data.data : []);
+    } catch (err) {
+      console.error("Error fetching logs:", err);
+      toast.error("Could not load time logs");
+    } finally {
+      setLogsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+
+  // ── Live timer ───────────────────────────────────────────────────────────
   useEffect(() => {
     let interval = null;
     if (isTimerRunning) {
-      interval = setInterval(() => {
-        setSeconds((prev) => prev + 1);
-      }, 1000);
+      interval = setInterval(() => setSeconds((s) => s + 1), 1000);
     } else {
       clearInterval(interval);
     }
     return () => clearInterval(interval);
   }, [isTimerRunning]);
 
+  // ── Start ────────────────────────────────────────────────────────────────
   const handleStartTimer = () => {
-    if (!taskName.trim()) return alert("Please enter a task name!");
+    if (!taskName.trim()) {
+      toast.error("Please enter a task name first!");
+      return;
+    }
     setIsTimerRunning(true);
   };
 
-  const handleStopTimer = () => {
+  // ── Stop → save to backend ───────────────────────────────────────────────
+  const handleStopTimer = async () => {
     setIsTimerRunning(false);
 
-    const newLog = {
-      id: Date.now().toString(),
-      taskName,
-      category,
-      duration: seconds,
-      date: "Just now",
-    };
+    if (seconds < 60) {
+      toast("Timer stopped — less than 1 minute logged, not saved.", { icon: "⚠️" });
+      setSeconds(0);
+      setTaskName("");
+      return;
+    }
 
-    setLogs((prev) => [newLog, ...prev]);
-    setTaskName("");
-    setSeconds(0);
+    const durationMinutes = Math.round(seconds / 60);
+
+    try {
+      setSaving(true);
+      const loadingId = toast.loading("Saving time log...");
+      await apiFetch("/api/timelogs", {
+        method: "POST",
+        body: JSON.stringify({
+          duration: durationMinutes,
+          description: taskName.trim(),
+          category,
+        }),
+      });
+      toast.success(`Logged ${durationMinutes} min — ${taskName}`, { id: loadingId });
+      setTaskName("");
+      setSeconds(0);
+      fetchLogs(); // refresh list
+    } catch (err) {
+      toast.error(err.message || "Failed to save log");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDeleteLog = (id) => {
-    setLogs((prev) => prev.filter((item) => (item._id || item.id) !== id));
+  // ── Delete log ───────────────────────────────────────────────────────────
+  const handleDeleteLog = async (id) => {
+    const loadingId = toast.loading("Deleting...");
+    try {
+      await apiFetch(`/api/timelogs/${id}`, { method: "DELETE" });
+      setLogs((prev) => prev.filter((l) => (l._id || l.id) !== id));
+      toast.success("Log deleted", { id: loadingId });
+    } catch (err) {
+      toast.error(err.message || "Failed to delete log", { id: loadingId });
+    }
   };
 
+  // ── Format helpers ───────────────────────────────────────────────────────
   const formatTime = (totalSeconds = 0) => {
-    const hrs = Math.floor(totalSeconds / 3600);
+    const hrs  = Math.floor(totalSeconds / 3600);
     const mins = Math.floor((totalSeconds % 3600) / 60);
     const secs = totalSeconds % 60;
-    return `${hrs.toString().padStart(2, "0")}:${mins
-      .toString()
-      .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${hrs.toString().padStart(2,"0")}:${mins.toString().padStart(2,"0")}:${secs.toString().padStart(2,"0")}`;
   };
 
-  const totalTrackedSeconds = (Array.isArray(logs) ? logs : []).reduce(
-    (acc, curr) => acc + (curr.duration || 0),
-    0
-  );
+  // Total seconds from DB logs (duration is in minutes)
+  const totalTrackedSeconds = logs.reduce((acc, l) => acc + (l.duration || 0) * 60, 0);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto text-slate-100">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-white">
-          Time Tracking
-        </h1>
-        <p className="text-sm text-slate-400 mt-1">
-          Track time spent on tasks and projects
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight text-white">Time Tracking</h1>
+        <p className="text-sm text-slate-400 mt-1">Track time spent on tasks and projects</p>
       </div>
 
       <TimerHeader
@@ -106,14 +134,29 @@ export default function TimeTrackingPage() {
 
       <TimeStatsCards
         totalTimeFormatted={formatTime(totalTrackedSeconds)}
-        totalSessions={Array.isArray(logs) ? logs.length : 0}
+        totalSessions={logs.length}
       />
 
-      <TimeLogList
-        logs={logs}
-        onDeleteLog={handleDeleteLog}
-        formatTime={formatTime}
-      />
+      {logsLoading ? (
+        <div className="flex justify-center items-center h-32">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400" />
+        </div>
+      ) : (
+        <TimeLogList
+          logs={logs.map(l => ({
+            ...l,
+            id:       l._id || l.id,
+            taskName: l.description || "Untitled",
+            // Convert minutes → seconds for the formatTime display in TimeLogList
+            duration: (l.duration || 0) * 60,
+            date:     l.logDate
+              ? new Date(l.logDate).toLocaleDateString("en-IN", { day:"numeric", month:"short" })
+              : "Today",
+          }))}
+          onDeleteLog={handleDeleteLog}
+          formatTime={formatTime}
+        />
+      )}
     </div>
   );
 }
