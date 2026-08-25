@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutGrid,
   CheckSquare,
@@ -21,9 +21,16 @@ import {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
+    // Auth Check
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+    }
+
     const handleResize = () => {
       if (window.innerWidth < 768) {
         setIsCollapsed(true);
